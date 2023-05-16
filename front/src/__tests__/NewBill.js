@@ -16,7 +16,6 @@ import { localStorageMock } from "../__mocks__/localStorage.js";
 import router from "../app/Router.js";
 
 jest.mock("../app/store", () => mockStore);
-window.alert = jest.fn();
 
 describe("Given I am connected as an employee", () => {
   describe("can i connect to newBill test push note de frais", () => {
