@@ -148,5 +148,3 @@ describe("Given I am a user connected as Admin", () => {
     });
   });
 });
-
-// avec l'error 404 et 500 j'ai cette erreur => TypeError: _store.default.bills.mockImplementationOnce is not a function

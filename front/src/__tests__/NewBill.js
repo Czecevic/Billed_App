@@ -16,6 +16,48 @@ import { localStorageMock } from "../__mocks__/localStorage.js";
 import router from "../app/Router.js";
 
 jest.mock("../app/store", () => mockStore);
+window.alert = jest.fn();
+
+describe("Given I am connected as an employee", () => {
+  describe("When I am on NewBill Page", () => {
+    beforeEach(() => {
+      Object.defineProperty(window, "localStorage", {
+        value: localStorageMock,
+      });
+      window.localStorage.setItem(
+        "user",
+        JSON.stringify({
+          type: "Employee",
+        })
+      );
+      const root = document.createElement("div");
+      root.setAttribute("id", "root");
+      document.body.append(root);
+      router();
+      window.onNavigate(ROUTES_PATH.NewBill);
+    });
+    describe("When I am on the NewBill page and I upload a file with correct extension (.jpg)", () => {
+      test("it should add the file to the form", () => {
+        const onNavigate = (pathname) => {
+          document.body.innerHTML = ROUTES({ pathname });
+        };
+        const newBill = new NewBill({
+          document,
+          onNavigate,
+          localStorage: window.localStorage,
+          store: mockStore,
+        });
+        const fileUp = screen.getByTestId("file");
+        const handleChangeFile = jest.fn((e) => newBill.handleChangeFile(e));
+        const file = new File(["test"], "test.png", { type: "image/png" });
+        fileUp.addEventListener("change", handleChangeFile);
+        fireEvent.change(fileUp, { target: { files: [file] } });
+        expect(handleChangeFile).toHaveBeenCalled();
+        expect(fileUp.files[0]).toStrictEqual(file);
+      });
+    });
+  });
+});
 
 describe("Given I am connected as an employee", () => {
   describe("can i connect to newBill test push note de frais", () => {
@@ -26,90 +68,54 @@ describe("Given I am connected as an employee", () => {
       expect(screen.getAllByText("Envoyer une note de frais")).toBeTruthy();
     });
   });
-  // describe("When I am on NewBill Page", () => {
-  //   // test 1 => nous verifions si l'icon bill est allumé
-  //   test("Then bill icon in vertical layout should be highlighted", async () => {
-  //     Object.defineProperty(window, "localStorage", {
-  //       value: localStorageMock,
-  //     });
-  //     window.localStorage.setItem(
-  //       "user",
-  //       JSON.stringify({
-  //         type: "Employee",
-  //       })
-  //     );
-  //     const root = document.createElement("div");
-  //     root.setAttribute("id", "root");
-  //     document.body.append(root);
-  //     // chargement de la page
-  //     const pathname = ROUTES_PATH.NewBill;
-  //     root.innerHTML = ROUTES({ pathname: pathname, loading: true });
-  //     document.querySelector("#layout-icon1").classList.remove("active-icon");
-  //     document.querySelector("#layout-icon2").classList.add("active-icon");
-  //     // récupération de l'icône
-  //     await waitFor(() => screen.getByTestId("icon-mail"));
-  //     const mailIcon = screen.getByTestId("icon-mail");
-  //     //vérification si l'icône contient la classe active-icon
-  //     const iconActivated = mailIcon.classList.contains("active-icon");
-  //     expect(iconActivated).toBeTruthy();
-  //   });
-  // });
-  // verifier que le fichier importer et un fichier jpeg, jpg, png
   describe("When I am on the NewBill page and I upload a file with an extension other than jpeg, jpg or png", () => {
-    document.body.innerHTML = NewBillUI();
-    const onNavigate = (pathname) => {
-      document.body.innerHTML = ROUTES({ pathname });
-    };
-    const newBill = new NewBill({
-      document,
-      onNavigate,
-      store: null,
-      localStorage: window.localStorage,
+    test("Then an error message is displayed and the file is not uploaded", () => {
+      window.localStorage.setItem("user", JSON.stringify({ type: "Employee" }));
+      document.body.innerHTML = NewBillUI();
+      const onNavigate = (pathname) => {
+        document.body.innerHTML = ROUTES({ pathname });
+      };
+      const newBill = new NewBill({
+        document,
+        onNavigate,
+        store: null,
+        localStorage: window.localStorage,
+      });
+      const handleChangeFile = jest.fn((e) => newBill.handleChangeFile(e));
+      const fileInput = screen.getByTestId("file");
+      fileInput.addEventListener("change", handleChangeFile);
+      fireEvent.change(fileInput, {
+        target: {
+          files: [
+            new File(["test"], "test.txt", {
+              type: "application/txt",
+            }),
+          ],
+        },
+      });
+      expect(handleChangeFile).toHaveBeenCalled();
+      expect(fileInput.files[0].name).toBe("test.txt");
     });
-    const handleChangeFile = jest.fn((e) => newBill.handleChangeFile(e));
-    const fileInput = screen.getByTestId("file");
-    fileInput.addEventListener("change", handleChangeFile);
-    fireEvent.change(fileInput, {
-      target: {
-        files: [
-          new File(["test"], "test.txt", {
-            type: "application/txt",
-          }),
-        ],
-      },
-    });
-    expect(handleChangeFile).toHaveBeenCalled();
-    // expect(fileInput.files[0].name).toBe("test.txt");
   });
 });
-// test("Then bill create", () => {
-//   // page of NewBill
-//   document.body.innerHTML = NewBillUI();
-//   const onNavigate = (pathname) => {
-//     document.body.innerHTML = ROUTES({ pathname });
-//   };
-//   const newBill = new NewBill({
-//     document,
-//     onNavigate,
-//     store: null,
-//     localStorage: window.localStorage,
-//   });
-//   const handleSubmit = jest.fn((e) => newBill.handleSubmit(e));
-//   const submit = screen.getByTestId("from-new-bill");
-//   submit.addEventListener("submit", handleSubmit);
-//   fireEvent.submit(submit);
-//   expect(handleSubmit).toHaveBeenCalled();
-// });
-// });
 
-// error
-describe("Given I am a user connected as Admin", () => {
-  describe("When I navigate to bills", () => {
-    test("fetches bills from mock API GET", async () => {
-      const html = NewBillUI();
-      document.body.innerHTML = html;
-      expect(screen.getByTestId("form-new-bill")).toBeTruthy();
-      expect(screen.getAllByText("Envoyer une note de frais")).toBeTruthy();
+// // error
+describe("Given I am a user connected as Employee", () => {
+  describe("When I navigate to Bill page", () => {
+    test("fetches New Bills from mock API", async () => {
+      beforeEach(() => {
+        jest.spyOn(mockStore, "bills");
+        Object.defineProperty(window, "localStorage", {
+          value: localStorageMock,
+        });
+        window.localStorage.setItem(
+          "user",
+          JSON.stringify({
+            type: "Employee",
+            email: "a@a",
+          })
+        );
+      });
     });
     describe("When an error occurs on API", () => {
       beforeEach(() => {
@@ -120,11 +126,10 @@ describe("Given I am a user connected as Admin", () => {
         window.localStorage.setItem(
           "user",
           JSON.stringify({
-            type: "Admin",
+            type: "Employee",
             email: "a@a",
           })
         );
-        document.body.innerHTML = BillsUI({ data: [bills[0]] });
         const root = document.createElement("div");
         root.setAttribute("id", "root");
         document.body.appendChild(root);
@@ -138,9 +143,7 @@ describe("Given I am a user connected as Admin", () => {
             },
           };
         });
-
-        window.onNavigate(ROUTES_PATH.Bills);
-        // document.body.innerHTML = html;
+        window.onNavigate(ROUTES_PATH["Bills"]);
         await new Promise(process.nextTick);
         const message = await screen.getByText(/Erreur 404/);
         expect(message).toBeTruthy();
@@ -155,7 +158,7 @@ describe("Given I am a user connected as Admin", () => {
           };
         });
 
-        window.onNavigate(ROUTES_PATH.Bills);
+        window.onNavigate(ROUTES_PATH["Bills"]);
         await new Promise(process.nextTick);
         const message = await screen.getByText(/Erreur 500/);
         expect(message).toBeTruthy();
@@ -163,6 +166,47 @@ describe("Given I am a user connected as Admin", () => {
     });
   });
 });
+
+describe("when I click on the submit button", () => {
+  test("the bill should be sent", () => {
+    jest.spyOn(mockStore, "bills");
+    Object.defineProperty(window, "localStorage", { value: localStorageMock });
+    window.localStorage.setItem(
+      "user",
+      JSON.stringify({
+        type: "Employee",
+        email: "a@a",
+      })
+    );
+
+    const expenseType = screen.getByTestId("expense-type");
+    expenseType.value = "Transports";
+
+    const expenseName = screen.getByTestId("expense-name");
+    expenseName.value = "test1";
+
+    const expenseAmount = screen.getByTestId("amount");
+    expenseAmount.value = 100;
+
+    const expenseDate = screen.getByTestId("datepicker");
+    expenseDate.value = "2001-01-01";
+
+    const expenseVAT = screen.getByTestId("vat");
+    expenseVAT.value = "";
+
+    const expensePCT = screen.getByTestId("pct");
+    expensePCT.value = 20;
+
+    const expenseCommentary = screen.getByTestId("commentary");
+    expenseCommentary.value = "plop";
+
+    const form = screen.getByTestId("form-new-bill");
+    fireEvent.submit(form);
+
+    expect(form).toBeTruthy();
+  });
+});
+
 describe("test post", () => {
   describe("create a new bill", () => {
     test("send bill with moke post", async () => {
